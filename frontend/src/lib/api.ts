@@ -73,6 +73,14 @@ export const adminAPI = {
     }),
   deleteProduct: (id: string) =>
     api.delete(`/admin/products/${id}`),
+  
+  getProducts: (params?: { page?: number; limit?: number; search?: string; category?: string }) =>
+    api.get('/admin/products', { params }),
+  getOrders: (params?: { page?: number; limit?: number; status?: string }) =>
+    api.get('/admin/orders', { params }),
+  getDashboardStats: () => api.get('/admin/dashboard'),
+  
   updateOrderStatus: (id: string, status: string) =>
     api.put(`/admin/orders/${id}/status`, { status }),
 };
+
