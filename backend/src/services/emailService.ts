@@ -1,3 +1,26 @@
+// backend/src/services/emailService.ts - VERSIÓN COMPLETA
+import nodemailer from 'nodemailer';
+
+// Configurar el transportador de correo
+const transporter = nodemailer.createTransporter({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: false, // true para 465, false para otros puertos
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+// Verificar la configuración del transportador
+transporter.verify()
+  .then(() => {
+    console.log('✅ Email service is ready');
+  })
+  .catch((error) => {
+    console.error('❌ Email service error:', error);
+  });
+
 export const sendOrderConfirmation = async (
   customerEmail: string,
   orderData: {
@@ -108,6 +131,7 @@ export const sendOrderConfirmation = async (
               </div>
               <div class="feature">
                 <div class="feature-icon">🔒</div>
+                <h4>Compra segura</h4>
                 <p>Compra segura y protegida</p>
               </div>
             </div>
@@ -136,8 +160,13 @@ export const sendOrderConfirmation = async (
     `
   };
 
-  await transporter.sendMail(mailOptions);
-  console.log(`Order confirmation email sent successfully to ${customerEmail}`);
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Order confirmation email sent successfully to ${customerEmail}`);
+  } catch (error) {
+    console.error('❌ Failed to send confirmation email:', error);
+    throw error;
+  }
 };
 
 export const sendOrderStatusUpdate = async (
@@ -195,6 +224,11 @@ export const sendOrderStatusUpdate = async (
     `
   };
 
-  await transporter.sendMail(mailOptions);
-  console.log(`Status update email sent to ${customerEmail} for order ${orderData.id}`);
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`✅ Status update email sent to ${customerEmail} for order ${orderData.id}`);
+  } catch (error) {
+    console.error('❌ Failed to send status update email:', error);
+    throw error;
+  }
 };
