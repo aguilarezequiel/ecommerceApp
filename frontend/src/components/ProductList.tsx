@@ -146,7 +146,7 @@ export default function ProductList({ category, search }: ProductListProps) {
               <div className="flex items-center justify-between mt-4">
                 <div>
                   <span className="text-2xl font-bold text-gray-900">
-                    ${product.price.toFixed(2)}
+                    ${product.price ? Number(product.price).toFixed(2) : '0.00'}
                   </span>
                   {product.stock < 10 && product.stock > 0 && (
                     <p className="text-orange-600 text-sm">
