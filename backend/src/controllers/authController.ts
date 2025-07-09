@@ -8,62 +8,113 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   firstName: z.string().min(1),
-  lastName: z.string().min(1)
+  lastName: z.string().min(1),
+  phoneNumber: z.string().optional() // NUEVO CAMPO
 });
 
 const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string()
+  password: z.string().min(1)
 });
 
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password, firstName, lastName } = registerSchema.parse(req.body);
-    
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const { email, password, firstName, lastName, phoneNumber } = registerSchema.parse(req.body);
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
+
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    
+
+    // Create user
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         firstName,
-        lastName
+        lastName,
+        phoneNumber // NUEVO CAMPO
       },
-      select: { id: true, email: true, firstName: true, lastName: true, role: true }
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true, // NUEVO CAMPO
+        role: true,
+        createdAt: true
+      }
     });
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!);
-    
-    res.status(201).json({ user, token });
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET!,
+      { expiresIn: '7d' }
+    );
+
+    res.status(201).json({
+      user,
+      token
+    });
   } catch (error) {
-    res.status(400).json({ error: 'Invalid data' });
+    console.error('Registration error:', error);
+    res.status(400).json({ error: 'Invalid data provided' });
   }
 };
 
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
-    
-    const user = await prisma.user.findUnique({ where: { email } });
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true, // NUEVO CAMPO
+        role: true,
+        createdAt: true
+      }
+    });
+
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
+    // Check password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET!);
-    
+    // Generate JWT
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET!,
+      { expiresIn: '7d' }
+    );
+
+    // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
-    res.json({ user: userWithoutPassword, token });
+
+    res.json({
+      user: userWithoutPassword,
+      token
+    });
   } catch (error) {
-    res.status(400).json({ error: 'Invalid data' });
+    console.error('Login error:', error);
+    res.status(400).json({ error: 'Invalid data provided' });
   }
 };

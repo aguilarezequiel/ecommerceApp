@@ -1,3 +1,4 @@
+// backend/prisma/schema.prisma - VERSIÓN ACTUALIZADA
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,14 +9,15 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  firstName String
-  lastName  String
-  role      Role     @default(CUSTOMER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  firstName   String
+  lastName    String
+  phoneNumber String?  // NUEVO CAMPO
+  role        Role     @default(CUSTOMER)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   orders Order[]
   cart   CartItem[]
@@ -28,26 +30,43 @@ enum Role {
   ADMIN
 }
 
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  description String?   @db.Text
+  iconUrl     String?
+  iconName    String?   // Para iconos de lucide-react
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products Product[]
+
+  @@map("categories")
+}
+
 model Product {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   name        String
-  description String   @db.Text
-  price       Decimal  @db.Decimal(10, 2)
+  description String    @db.Text
+  price       Decimal   @db.Decimal(10, 2)
   stock       Int
   imageUrl    String?
-  category    String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  category    String    // Mantenemos para retrocompatibilidad
+  categoryId  String?   // NUEVO CAMPO para relación con Category
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  cartItems  CartItem[]
-  orderItems OrderItem[]
+  categoryRelation Category?   @relation(fields: [categoryId], references: [id])
+  cartItems        CartItem[]
+  orderItems       OrderItem[]
 
   @@map("products")
 }
 
 model CartItem {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   productId String
   quantity  Int
@@ -97,4 +116,14 @@ model OrderItem {
   product Product @relation(fields: [productId], references: [id])
 
   @@map("order_items")
+}
+
+model AppSettings {
+  id               String   @id @default(cuid())
+  adminPhoneNumber String
+  whatsappMessage  String?  @default("Hola, me gustaría hacer una consulta sobre ShopApp")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("app_settings")
 }
