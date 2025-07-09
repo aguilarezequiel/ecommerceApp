@@ -15,7 +15,19 @@ const createProductSchema = z.object({
 
 const updateProductSchema = createProductSchema.partial();
 
-// Products Management
+const updateUserRoleSchema = z.object({
+  role: z.enum(['CUSTOMER', 'ADMIN'])
+});
+
+// Tipo para los datos de actualización que incluye imageUrl
+type UpdateProductData = z.infer<typeof updateProductSchema> & {
+  imageUrl?: string;
+};
+
+// ===============================
+// PRODUCTS MANAGEMENT
+// ===============================
+
 export const createProduct = async (req: AuthRequest, res: Response) => {
   try {
     const { name, description, price, stock, category } = createProductSchema.parse({
@@ -47,11 +59,16 @@ export const createProduct = async (req: AuthRequest, res: Response) => {
 export const updateProduct = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const updateData = updateProductSchema.parse({
+    
+    // Parseamos los datos con el schema parcial
+    const parsedData = updateProductSchema.parse({
       ...req.body,
       price: req.body.price ? parseFloat(req.body.price) : undefined,
       stock: req.body.stock ? parseInt(req.body.stock) : undefined
     });
+
+    // Creamos el objeto de actualización con el tipo correcto
+    const updateData: UpdateProductData = { ...parsedData };
 
     const existingProduct = await prisma.product.findUnique({
       where: { id }
@@ -116,7 +133,8 @@ export const deleteProduct = async (req: AuthRequest, res: Response) => {
   }
 };
 
-export const getAllProductsAdmin = async (req: AuthRequest, res: Response) => {
+// Alias para getAdminProducts (nombre que se usa en las rutas)
+export const getAdminProducts = async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '10', search, category } = req.query;
     
@@ -162,8 +180,15 @@ export const getAllProductsAdmin = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Orders Management
-export const getAllOrders = async (req: AuthRequest, res: Response) => {
+// Mantener getAllProductsAdmin para compatibilidad
+export const getAllProductsAdmin = getAdminProducts;
+
+// ===============================
+// ORDERS MANAGEMENT
+// ===============================
+
+// Alias para getAdminOrders (nombre que se usa en las rutas)
+export const getAdminOrders = async (req: AuthRequest, res: Response) => {
   try {
     const { page = '1', limit = '10', status } = req.query;
     
@@ -213,6 +238,9 @@ export const getAllOrders = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Mantener getAllOrders para compatibilidad
+export const getAllOrders = getAdminOrders;
+
 export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -238,7 +266,159 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Dashboard Stats
+// ===============================
+// USERS MANAGEMENT
+// ===============================
+
+export const getUsers = async (req: AuthRequest, res: Response) => {
+  try {
+    const { page = '1', limit = '10', search, role } = req.query;
+    
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const skip = (pageNum - 1) * limitNum;
+
+    const where: any = {};
+    
+    if (role) {
+      where.role = role;
+    }
+    
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search as string } },
+        { lastName: { contains: search as string } },
+        { email: { contains: search as string } }
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limitNum,
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phoneNumber: true,
+          role: true,
+          createdAt: true,
+          // No incluir password por seguridad
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.user.count({ where })
+    ]);
+
+    res.json({
+      users,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+};
+
+export const updateUserRole = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { role } = updateUserRoleSchema.parse(req.body);
+
+    // Verificar que el usuario existe
+    const existingUser = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Evitar que un admin se quite a sí mismo el rol de admin
+    if (req.userId === id && role === 'CUSTOMER') {
+      return res.status(400).json({ 
+        error: 'You cannot remove admin role from yourself' 
+      });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { role },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        phoneNumber: true,
+        role: true,
+        createdAt: true
+      }
+    });
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    res.status(400).json({ error: 'Invalid data' });
+  }
+};
+
+export const deleteUser = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar que el usuario existe
+    const existingUser = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Evitar que un admin se elimine a sí mismo
+    if (req.userId === id) {
+      return res.status(400).json({ 
+        error: 'You cannot delete yourself' 
+      });
+    }
+
+    // Verificar que no hay órdenes activas para este usuario
+    const activeOrders = await prisma.order.count({
+      where: { 
+        userId: id,
+        status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'] }
+      }
+    });
+
+    if (activeOrders > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete user with active orders. Please cancel or complete orders first.' 
+      });
+    }
+
+    // Eliminar usuario (esto también eliminará sus relaciones en cascada)
+    await prisma.user.delete({
+      where: { id }
+    });
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+};
+
+// ===============================
+// DASHBOARD STATS
+// ===============================
+
 export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {
     const [
@@ -246,7 +426,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       totalOrders,
       totalRevenue,
       pendingOrders,
-      lowStockProducts
+      lowStockProducts,
+      totalUsers
     ] = await Promise.all([
       prisma.product.count({ where: { isActive: true } }),
       prisma.order.count(),
@@ -255,7 +436,8 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         where: { status: { not: 'CANCELLED' } }
       }),
       prisma.order.count({ where: { status: 'PENDING' } }),
-      prisma.product.count({ where: { stock: { lte: 10 }, isActive: true } })
+      prisma.product.count({ where: { stock: { lte: 10 }, isActive: true } }),
+      prisma.user.count({ where: { role: 'CUSTOMER' } })
     ]);
 
     // Recent orders
@@ -283,14 +465,42 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       }
     });
 
+    // Top products by sales
+    const topProducts = await prisma.orderItem.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true },
+      _count: true,
+      orderBy: {
+        _sum: { quantity: 'desc' }
+      },
+      take: 5
+    });
+
+    // Get product details for top products
+    const topProductsWithDetails = await Promise.all(
+      topProducts.map(async (item) => {
+        const product = await prisma.product.findUnique({
+          where: { id: item.productId },
+          select: { id: true, name: true, imageUrl: true }
+        });
+        return {
+          ...product,
+          totalSold: item._sum.quantity,
+          orderCount: item._count
+        };
+      })
+    );
+
     res.json({
       totalProducts,
       totalOrders,
       totalRevenue: totalRevenue._sum.total || 0,
       pendingOrders,
       lowStockProducts,
+      totalUsers,
       recentOrders,
-      salesByMonth
+      salesByMonth,
+      topProducts: topProductsWithDetails
     });
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
