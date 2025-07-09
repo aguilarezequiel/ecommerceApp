@@ -53,6 +53,25 @@ export default function Cart() {
     }
   };
 
+  // Helper function to safely format price
+  const formatPrice = (price: any): string => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
+  };
+
+  // Helper function to calculate item total
+  const getItemTotal = (item: any): number => {
+    const price = typeof item.product.price === 'string' 
+      ? parseFloat(item.product.price) 
+      : item.product.price;
+    return (price || 0) * item.quantity;
+  };
+
+  // Calculate total safely
+  const calculateTotal = (): number => {
+    return items.reduce((sum, item) => sum + getItemTotal(item), 0);
+  };
+
   if (!user) {
     return (
       <div className="text-center py-12">
@@ -145,7 +164,7 @@ export default function Cart() {
                   {item.product.name}
                 </h3>
                 <p className="text-gray-600 text-sm mt-1">
-                  Precio: ${item.product.price.toFixed(2)}
+                  Precio: ${formatPrice(item.product.price)}
                 </p>
                 <p className="text-gray-600 text-sm">
                   Stock disponible: {item.product.stock}
@@ -175,10 +194,10 @@ export default function Cart() {
                 </button>
               </div>
               
-              {/* Subtotal & Remove */}
+              {/* Item Total */}
               <div className="text-right">
-                <p className="font-semibold text-lg">
-                  ${(item.product.price * item.quantity).toFixed(2)}
+                <p className="text-lg font-semibold text-gray-900">
+                  ${getItemTotal(item).toFixed(2)}
                 </p>
                 <button
                   onClick={() => removeFromCart(item.id)}
@@ -191,43 +210,43 @@ export default function Cart() {
           </div>
         ))}
       </div>
-      
+
       {/* Order Summary */}
       <div className="lg:col-span-1">
-        <div className="bg-white p-6 rounded-lg shadow-sm sticky top-4">
+        <div className="bg-white p-6 rounded-lg shadow-sm sticky top-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
             Resumen del Pedido
           </h2>
           
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Subtotal</span>
-              <span className="font-medium">${total.toFixed(2)}</span>
+          <div className="space-y-2 mb-4">
+            <div className="flex justify-between text-gray-600">
+              <span>Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
+              <span>${calculateTotal().toFixed(2)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Envío</span>
-              <span className="font-medium">Gratis</span>
+            <div className="flex justify-between text-gray-600">
+              <span>Envío</span>
+              <span>Gratis</span>
             </div>
-            <div className="border-t pt-3">
-              <div className="flex justify-between">
-                <span className="text-lg font-semibold">Total</span>
-                <span className="text-lg font-semibold">${total.toFixed(2)}</span>
+            <div className="border-t pt-2">
+              <div className="flex justify-between text-lg font-semibold text-gray-900">
+                <span>Total</span>
+                <span>${calculateTotal().toFixed(2)}</span>
               </div>
             </div>
           </div>
-          
+
           <Link
             href="/checkout"
-            className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors mt-6 block text-center font-medium"
+            className="w-full bg-primary-600 text-white py-3 px-4 rounded-lg hover:bg-primary-700 transition-colors text-center block"
           >
             Proceder al Checkout
           </Link>
           
           <Link
             href="/products"
-            className="w-full text-primary-600 py-3 px-4 rounded-lg border border-primary-600 hover:bg-primary-50 transition-colors mt-3 block text-center font-medium"
+            className="w-full text-primary-600 py-2 px-4 text-center block mt-3 hover:text-primary-700"
           >
-            Seguir Comprando
+            Continuar Comprando
           </Link>
         </div>
       </div>

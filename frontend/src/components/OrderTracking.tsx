@@ -1,5 +1,7 @@
+// frontend/src/components/OrderTracking.tsx
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { Search, Package, Truck, CheckCircle, Clock } from 'lucide-react';
 import { ordersAPI } from '@/lib/api';
 import { toast } from 'react-hot-toast';
@@ -20,6 +22,10 @@ interface TrackingInfo {
   }>;
 }
 
+interface OrderTrackingProps {
+  initialCode?: string;
+}
+
 const statusSteps = [
   { key: 'PENDING', label: 'Pendiente', icon: Clock },
   { key: 'CONFIRMED', label: 'Confirmado', icon: CheckCircle },
@@ -28,25 +34,27 @@ const statusSteps = [
   { key: 'DELIVERED', label: 'Entregado', icon: CheckCircle },
 ];
 
-export default function OrderTracking() {
-  const [trackingCode, setTrackingCode] = useState('');
+export default function OrderTracking({ initialCode = '' }: OrderTrackingProps) {
+  const [trackingCode, setTrackingCode] = useState(initialCode);
   const [trackingInfo, setTrackingInfo] = useState<TrackingInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
-  const trackOrder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!trackingCode.trim()) {
-      toast.error('Ingresa un código de seguimiento');
-      return;
+  // Auto-search if initialCode is provided
+  useEffect(() => {
+    if (initialCode) {
+      setTrackingCode(initialCode);
+      trackOrderWithCode(initialCode);
     }
+  }, [initialCode]);
 
+  const trackOrderWithCode = async (code: string) => {
     setLoading(true);
     setNotFound(false);
     setTrackingInfo(null);
 
     try {
-      const response = await ordersAPI.trackOrder(trackingCode.trim());
+      const response = await ordersAPI.trackOrder(code.trim());
       setTrackingInfo(response.data);
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -59,8 +67,23 @@ export default function OrderTracking() {
     }
   };
 
+  const trackOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!trackingCode.trim()) {
+      toast.error('Ingresa un código de seguimiento');
+      return;
+    }
+
+    await trackOrderWithCode(trackingCode);
+  };
+
   const getCurrentStepIndex = (status: string) => {
     return statusSteps.findIndex(step => step.key === status);
+  };
+
+  const formatPrice = (price: any): string => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
   };
 
   return (
@@ -82,7 +105,7 @@ export default function OrderTracking() {
               type="text"
               value={trackingCode}
               onChange={(e) => setTrackingCode(e.target.value)}
-              placeholder="Ingresa tu código de seguimiento"
+              placeholder="Ingresa tu código de seguimiento (ej: 1CDA01F2)"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
@@ -108,7 +131,7 @@ export default function OrderTracking() {
             <Package className="h-12 w-12 mx-auto mb-3" />
             <h3 className="text-lg font-semibold">Pedido no encontrado</h3>
             <p className="text-sm">
-              No se encontró ningún pedido con el código de seguimiento proporcionado.
+              No se encontró ningún pedido con el código de seguimiento <strong>{trackingCode}</strong>.
               Verifica que el código sea correcto.
             </p>
           </div>
@@ -123,18 +146,23 @@ export default function OrderTracking() {
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Pedido #{trackingInfo.id}
+                  Pedido #{trackingInfo.id.slice(-8)}
                 </h2>
                 <p className="text-gray-600">
-                  Código de seguimiento: {trackingInfo.trackingCode}
+                  Código de seguimiento: <span className="font-mono bg-gray-100 px-2 py-1 rounded">{trackingInfo.trackingCode}</span>
                 </p>
                 <p className="text-gray-600">
-                  Fecha: {new Date(trackingInfo.createdAt).toLocaleDateString()}
+                  Fecha: {new Date(trackingInfo.createdAt).toLocaleDateString('es-ES', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-gray-900">
-                  ${trackingInfo.total.toFixed(2)}
+                  ${formatPrice(trackingInfo.total)}
                 </p>
               </div>
             </div>
@@ -166,31 +194,31 @@ export default function OrderTracking() {
                       <Icon className="h-6 w-6" />
                     </div>
 
-                    {/* Line */}
+                    {/* Content */}
+                    <div className="ml-4 flex-1">
+                      <div className="flex items-center">
+                        <h4 className={`font-medium ${
+                          isCompleted ? 'text-gray-900' : 'text-gray-400'
+                        }`}>
+                          {step.label}
+                        </h4>
+                        {isCurrent && (
+                          <span className="ml-2 bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded-full">
+                            Actual
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Connector line */}
                     {index < statusSteps.length - 1 && (
                       <div
-                        className={`absolute left-6 w-0.5 h-16 -mt-8 ${
-                          index < currentStepIndex ? 'bg-primary-600' : 'bg-gray-300'
+                        className={`absolute left-6 mt-12 w-0.5 h-8 ${
+                          isCompleted ? 'bg-primary-600' : 'bg-gray-300'
                         }`}
-                        style={{ top: '3rem' }}
+                        style={{ top: `${index * 80 + 48}px` }}
                       />
                     )}
-
-                    {/* Content */}
-                    <div className="ml-4">
-                      <h4
-                        className={`text-sm font-semibold ${
-                          isCompleted ? 'text-gray-900' : 'text-gray-400'
-                        }`}
-                      >
-                        {step.label}
-                      </h4>
-                      {isCurrent && (
-                        <p className="text-sm text-primary-600 font-medium">
-                          Estado actual
-                        </p>
-                      )}
-                    </div>
                   </div>
                 );
               })}
@@ -199,39 +227,43 @@ export default function OrderTracking() {
 
           {/* Order Items */}
           <div className="bg-white p-6 rounded-lg shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-6">
               Productos del Pedido
             </h3>
             
             <div className="space-y-4">
               {trackingInfo.orderItems.map((item, index) => (
-                <div key={index} className="flex items-center space-x-4 py-3 border-b last:border-b-0">
-                  <div className="h-12 w-12 bg-gray-200 rounded overflow-hidden">
+                <div key={index} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
+                  {/* Product Image */}
+                  <div className="relative h-16 w-16 rounded overflow-hidden">
                     {item.product.imageUrl ? (
-                      <img
+                      <Image
                         src={item.product.imageUrl}
                         alt={item.product.name}
-                        className="h-full w-full object-cover"
+                        fill
+                        className="object-cover"
                       />
                     ) : (
-                      <div className="h-full w-full flex items-center justify-center">
+                      <div className="w-full h-full bg-gray-200 flex items-center justify-center">
                         <Package className="h-6 w-6 text-gray-400" />
                       </div>
                     )}
                   </div>
                   
+                  {/* Product Info */}
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">
                       {item.product.name}
                     </h4>
                     <p className="text-sm text-gray-600">
-                      Cantidad: {item.quantity}
+                      Cantidad: {item.quantity} × ${formatPrice(item.price)}
                     </p>
                   </div>
                   
+                  {/* Total */}
                   <div className="text-right">
                     <p className="font-semibold text-gray-900">
-                      ${(item.price * item.quantity).toFixed(2)}
+                      ${formatPrice(item.quantity * parseFloat(item.price.toString()))}
                     </p>
                   </div>
                 </div>

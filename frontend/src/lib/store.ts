@@ -1,3 +1,4 @@
+// frontend/src/lib/store.ts
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -32,12 +33,21 @@ interface AuthState {
 interface CartState {
   items: CartItem[];
   total: number;
-  setCart: (items: CartItem[], total: number) => void;
+  setCart: (items: any[], total: number) => void;
   addItem: (item: CartItem) => void;
   updateItem: (id: string, quantity: number) => void;
   removeItem: (id: string) => void;
   clearCart: () => void;
 }
+
+// Helper function to ensure price is a number
+const ensureNumericPrice = (price: any): number => {
+  if (typeof price === 'string') {
+    const parsed = parseFloat(price);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return typeof price === 'number' ? price : 0;
+};
 
 export const useAuthStore = create<AuthState>()(
   persist(
@@ -56,24 +66,48 @@ export const useAuthStore = create<AuthState>()(
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   total: 0,
-  setCart: (items, total) => set({ items, total }),
+  setCart: (items, total) => {
+    // Transform items to ensure price is numeric
+    const transformedItems = items.map(item => ({
+      ...item,
+      product: {
+        ...item.product,
+        price: ensureNumericPrice(item.product.price)
+      }
+    }));
+    
+    // Recalculate total to be safe
+    const calculatedTotal = transformedItems.reduce((sum, item) => 
+      sum + (item.product.price * item.quantity), 0
+    );
+    
+    set({ items: transformedItems, total: calculatedTotal });
+  },
   addItem: (item) => {
     const items = get().items;
-    const existingItem = items.find(i => i.productId === item.productId);
+    const itemWithNumericPrice = {
+      ...item,
+      product: {
+        ...item.product,
+        price: ensureNumericPrice(item.product.price)
+      }
+    };
+    
+    const existingItem = items.find(i => i.productId === itemWithNumericPrice.productId);
     
     if (existingItem) {
       set({
         items: items.map(i => 
-          i.productId === item.productId 
-            ? { ...i, quantity: i.quantity + item.quantity }
+          i.productId === itemWithNumericPrice.productId 
+            ? { ...i, quantity: i.quantity + itemWithNumericPrice.quantity }
             : i
         )
       });
     } else {
-      set({ items: [...items, item] });
+      set({ items: [...items, itemWithNumericPrice] });
     }
     
-    // Recalcular total
+    // Recalculate total
     const newItems = get().items;
     const newTotal = newItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
     set({ total: newTotal });
