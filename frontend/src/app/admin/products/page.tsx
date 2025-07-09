@@ -5,6 +5,7 @@ import { Plus, Search, Edit, Trash2, Eye, AlertTriangle, X } from 'lucide-react'
 import { adminAPI } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { toast } from 'react-hot-toast';
+import { getImageUrl, formatPrice } from '@/lib/imageUtils';
 
 interface Product {
   id: string;
@@ -91,7 +92,7 @@ export default function AdminProductsPage() {
     setFormData({
       name: product.name,
       description: product.description,
-      price: product.price.toString(),
+      price: formatPrice(product.price),
       stock: product.stock.toString(),
       category: product.category,
     });
@@ -262,7 +263,7 @@ export default function AdminProductsPage() {
                         <div className="flex-shrink-0 h-12 w-12">
                           {product.imageUrl ? (
                             <Image
-                              src={product.imageUrl}
+                              src={getImageUrl(product.imageUrl)}
                               alt={product.name}
                               width={48}
                               height={48}
@@ -284,7 +285,7 @@ export default function AdminProductsPage() {
                       {product.category}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      ${product.price.toFixed(2)}
+                      ${formatPrice(product.price)} 
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">

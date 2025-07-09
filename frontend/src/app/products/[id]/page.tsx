@@ -6,6 +6,7 @@ import { Star, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { productsAPI, cartAPI } from '@/lib/api';
 import { useCartStore, useAuthStore } from '@/lib/store';
 import { toast } from 'react-hot-toast';
+import { getImageUrl, formatPrice } from '@/lib/imageUtils';
 
 interface Product {
   id: string;
@@ -105,7 +106,7 @@ export default function ProductDetailPage() {
       <div className="relative h-96 lg:h-[500px] rounded-lg overflow-hidden">
         {product.imageUrl ? (
           <Image
-            src={product.imageUrl}
+            src={getImageUrl(product.imageUrl)}
             alt={product.name}
             fill
             className="object-cover"

@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Search, Package, Truck, CheckCircle, Clock } from 'lucide-react';
 import { ordersAPI } from '@/lib/api';
 import { toast } from 'react-hot-toast';
+import { getImageUrl } from '@/lib/imageUtils';
 
 interface TrackingInfo {
   id: string;
@@ -238,7 +239,7 @@ export default function OrderTracking({ initialCode = '' }: OrderTrackingProps) 
                   <div className="relative h-16 w-16 rounded overflow-hidden">
                     {item.product.imageUrl ? (
                       <Image
-                        src={item.product.imageUrl}
+                        src={getImageUrl(item.product.imageUrl)}
                         alt={item.product.name}
                         fill
                         className="object-cover"

@@ -6,6 +6,7 @@ import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { cartAPI } from '@/lib/api';
 import { useCartStore, useAuthStore } from '@/lib/store';
 import { toast } from 'react-hot-toast';
+import { getImageUrl, formatPrice } from '@/lib/imageUtils';
 
 export default function Cart() {
   const [loading, setLoading] = useState(true);
@@ -51,12 +52,6 @@ export default function Cart() {
     } catch (error) {
       toast.error('Error al eliminar producto');
     }
-  };
-
-  // Helper function to safely format price
-  const formatPrice = (price: any): string => {
-    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-    return isNaN(numPrice) ? '0.00' : numPrice.toFixed(2);
   };
 
   // Helper function to calculate item total
@@ -146,7 +141,7 @@ export default function Cart() {
               <div className="relative h-20 w-20 rounded overflow-hidden">
                 {item.product.imageUrl ? (
                   <Image
-                    src={item.product.imageUrl}
+                    src={getImageUrl(item.product.imageUrl)}
                     alt={item.product.name}
                     fill
                     className="object-cover"
