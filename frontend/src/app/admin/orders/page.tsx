@@ -222,7 +222,7 @@ export default function AdminOrdersPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        ${order.total.toFixed(2)}
+                        ${Number(order.total).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -312,7 +312,7 @@ export default function AdminOrdersPage() {
                       <div><strong>ID:</strong> {selectedOrder.id}</div>
                       <div><strong>Código de Seguimiento:</strong> {selectedOrder.trackingCode}</div>
                       <div><strong>Fecha:</strong> {formatDate(selectedOrder.createdAt)}</div>
-                      <div><strong>Total:</strong> ${selectedOrder.total.toFixed(2)}</div>
+                      <div><strong>Total:</strong> ${Number(selectedOrder.total).toFixed(2)}</div>
                     </div>
                   </div>
 
@@ -370,7 +370,7 @@ export default function AdminOrdersPage() {
                         <div className="flex-1">
                           <h4 className="font-medium text-gray-900">{item.product.name}</h4>
                           <p className="text-sm text-gray-600">
-                            Cantidad: {item.quantity} × ${item.price.toFixed(2)}
+                            Cantidad: {item.quantity} × ${Number(item.price).toFixed(2)}
                           </p>
                         </div>
                         
@@ -386,7 +386,7 @@ export default function AdminOrdersPage() {
                   <div className="border-t pt-3 mt-4">
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total:</span>
-                      <span>${selectedOrder.total.toFixed(2)}</span>
+                      <span>${Number(selectedOrder.total).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>

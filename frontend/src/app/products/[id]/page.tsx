@@ -136,7 +136,7 @@ export default function ProductDetailPage() {
         </div>
 
         <div className="text-3xl font-bold text-gray-900">
-          ${product.price.toFixed(2)}
+          ${Number(product.price).toFixed(2)} 
         </div>
 
         <div className="prose max-w-none">
