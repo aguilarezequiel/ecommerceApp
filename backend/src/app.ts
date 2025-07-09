@@ -1,56 +1,55 @@
-// backend/src/app.ts - REEMPLAZAR ARCHIVO COMPLETO
+// backend/src/app.ts - SECCIÓN DE RUTAS ACTUALIZADA
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
-import { PrismaClient } from '@prisma/client';
 
-// Routes existentes (usar nombres correctos según tu estructura)
-import authRoutes from './routes/auth';
-import productRoutes from './routes/products';
-import cartRoutes from './routes/cart';
-import orderRoutes from './routes/orders';
-import adminRoutes from './routes/admin';
-
-// Export prisma (asegúrate de que no esté duplicado)
-export const prisma = new PrismaClient();
+// Importar rutas
+import authRoutes from './routes/authRoutes';
+import productRoutes from './routes/productRoutes';
+import cartRoutes from './routes/cartRoutes';
+import orderRoutes from './routes/orderRoutes';
+import adminRoutes from './routes/adminRoutes';
+import categoryRoutes from './routes/categoryRoutes'; // Nueva importación
 
 const app = express();
 
-// Middleware
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+// Middleware de seguridad
+app.use(helmet());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
 }));
-app.use(cors());
+
+// Middleware para parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir archivos estáticos
+// Servir archivos estáticos (uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Routes existentes
+// Rutas de la API
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/categories', categoryRoutes); // Nueva ruta de categorías
 
-// Health check
+// Ruta de health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
-// Error handling middleware
+// Middleware de manejo de errores
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+// Manejo de rutas no encontradas
+app.use('*', (req, res) => {
+  res.status(404).json({ error: 'Route not found' });
 });
 
 export default app;
