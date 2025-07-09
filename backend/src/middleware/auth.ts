@@ -1,44 +1,40 @@
+// backend/src/middleware/auth.ts - REEMPLAZAR ARCHIVO COMPLETO
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../app';
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-  };
+  userId?: string;
+  userRole?: string;
 }
 
+// Función principal de autenticación
 export const authenticateToken = async (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: { id: true, email: true, role: true }
-    });
+    const token = req.header('Authorization')?.replace('Bearer ', '');
 
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid token' });
+    if (!token) {
+      return res.status(401).json({ error: 'Access denied. No token provided.' });
     }
 
-    req.user = user;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    req.userId = decoded.userId;
+    req.userRole = decoded.role;
+
     next();
   } catch (error) {
-    return res.status(403).json({ error: 'Invalid token' });
+    res.status(401).json({ error: 'Invalid token.' });
   }
 };
 
+// Middleware para verificar rol de administrador
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
-  if (req.user?.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Admin access required' });
+  if (req.userRole !== 'ADMIN') {
+    return res.status(403).json({ error: 'Access denied. Admin role required.' });
   }
   next();
 };
+
+// Alias para nueva funcionalidad (compatibilidad)
+export const auth = authenticateToken;
+export const adminAuth = requireAdmin;

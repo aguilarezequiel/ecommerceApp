@@ -1,20 +1,18 @@
-// backend/src/app.ts - VERSIÓN ACTUALIZADA
+// backend/src/app.ts - REEMPLAZAR ARCHIVO COMPLETO
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
 
-// Routes
-import authRoutes from './routes/authRoutes';
-import productRoutes from './routes/productRoutes';
-import cartRoutes from './routes/cartRoutes';
-import orderRoutes from './routes/orderRoutes';
-import adminRoutes from './routes/adminRoutes';
-import categoryRoutes from './routes/categoryRoutes'; // NUEVO
-import settingsRoutes from './routes/settingsRoutes'; // NUEVO
-import userRoutes from './routes/userRoutes'; // ACTUALIZADO
+// Routes existentes (usar nombres correctos según tu estructura)
+import authRoutes from './routes/auth';
+import productRoutes from './routes/products';
+import cartRoutes from './routes/cart';
+import orderRoutes from './routes/orders';
+import adminRoutes from './routes/admin';
 
+// Export prisma (asegúrate de que no esté duplicado)
 export const prisma = new PrismaClient();
 
 const app = express();
@@ -30,15 +28,12 @@ app.use(express.urlencoded({ extended: true }));
 // Servir archivos estáticos
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Routes
+// Routes existentes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/categories', categoryRoutes); // NUEVO
-app.use('/api/settings', settingsRoutes); // NUEVO
-app.use('/api/users', userRoutes); // ACTUALIZADO
 
 // Health check
 app.get('/api/health', (req, res) => {
