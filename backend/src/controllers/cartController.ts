@@ -140,3 +140,15 @@ export const removeFromCart = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ error: 'Failed to remove item' });
   }
 };
+
+export const clearCart = async (req: AuthRequest, res: Response) => {
+  try {
+    await prisma.cartItem.deleteMany({
+      where: { userId: req.user!.id }
+    });
+    
+    res.json({ message: 'Cart cleared successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to clear cart' });
+  }
+};

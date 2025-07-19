@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { User, Phone, Mail, Edit2, Save, X } from 'lucide-react';
-import { useAuthStore } from '@/lib/authStore';
+import { useAuthStore } from '@/lib/store';
 
 interface UserData {
   id: string;

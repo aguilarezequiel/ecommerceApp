@@ -288,3 +288,53 @@ export const trackOrderPublic = async (req: any, res: Response) => {
     res.status(500).json({ error: 'Failed to track order' });
   }
 };
+
+export const cancelOrder = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const order = await prisma.order.findFirst({
+      where: { 
+        id,
+        userId: req.user!.id 
+      },
+      include: {
+        orderItems: true
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.status !== 'PENDING') {
+      return res.status(400).json({ error: 'Only pending orders can be cancelled' });
+    }
+
+    // Update order status and restore stock
+    await prisma.$transaction(async (tx) => {
+      // Update order status
+      await tx.order.update({
+        where: { id },
+        data: { status: 'CANCELLED' }
+      });
+
+      // Restore product stock
+      for (const item of order.orderItems) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              increment: item.quantity
+            }
+          }
+        });
+      }
+    });
+
+    res.json({ message: 'Order cancelled successfully' });
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    res.status(500).json({ error: 'Failed to cancel order' });
+  }
+};

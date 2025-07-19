@@ -28,6 +28,7 @@ interface AuthState {
   token: string | null;
   login: (user: User, token: string) => void;
   logout: () => void;
+  setUser: (user: User) => void;
 }
 
 interface CartState {
@@ -56,6 +57,7 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       login: (user, token) => set({ user, token }),
       logout: () => set({ user: null, token: null }),
+      setUser: (user) => set({ user }),
     }),
     {
       name: 'auth-storage',
